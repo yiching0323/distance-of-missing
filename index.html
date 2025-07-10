@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="https://cdn.glitch.global/0130197a-5f42-4704-90ae-b924ebe5bcb4/icon.png?v=1742836942917"
+      type="image/x-icon"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <title>The Distance of Missing</title>
+    <style>
+      body {
+        background-color: black;
+        overflow: hidden;
+      }
+
+      .header {
+        color: white;
+        background-color: black;
+        font-size: 14px;
+        font-family: Helvetica, sans-serif;
+        font-style: italic;
+        font-weight: normal;
+        position: absolute;
+        top: 44%;
+        left: 3%;
+      }
+
+      .header2 {
+        color: white;
+        font-size: 14px;
+        font-family: Helvetica, sans-serif;
+        font-style: italic;
+        font-weight: normal;
+        position: absolute;
+        top: 47%;
+        left: 3%;
+      }
+
+      .header3 {
+        color: white;
+        font-size: 14px;
+        font-family: Helvetica, sans-serif;
+        font-style: italic;
+        font-weight: normal;
+        position: absolute;
+        top: 50%;
+        left: 3%;
+      }
+
+      .header4 {
+        color: white;
+        font-size: 14px;
+        font-family: Helvetica, sans-serif;
+        font-style: italic;
+        font-weight: normal;
+        position: absolute;
+        top: 53%;
+        left: 3%;
+      }
+
+      svg {
+        background-color: black;
+      }
+
+      select {
+        position: absolute;
+        left: 35px;
+        bottom: 5%;
+        padding: 5px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+      }
+
+      .selection1,
+      .selection2 {
+        color: white;
+        font-size: 13px;
+        font-family: Helvetica, sans-serif;
+        font-weight: normal;
+        position: absolute;
+      }
+
+      .selection1 {
+        bottom: 11%;
+        left: 3%;
+      }
+
+      .selection2 {
+        bottom: 9%;
+        left: 3%;
+      }
+      .copyright {
+        position: fixed;
+        bottom: 0%;
+        left: 1%;
+        width: 100%;
+        font-size: 10px;
+        color: white;
+        font-family: Helvetica, sans-serif;
+        font-weight: normal;
+        position: absolute;
+        text-decoration: none;
+      }
+
+      .soundtrack {
+        position: fixed;
+        bottom: 0%;
+        text-align: center;
+        width: 100%;
+        font-size: 10px;
+        color: white;
+        font-family: Helvetica, sans-serif;
+        font-weight: normal;
+        position: absolute;
+        text-decoration: none;
+      }
+      
+      #msbutton {
+        position: fixed;
+        right: 35px;
+        bottom: 5%;
+        padding: 5px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 5px;
+        color: white;
+        
+        font-size: 12px;
+        font-family: Helvetica, sans-serif;
+        font-weight: normal;
+        position: absolute;
+        text-decoration: none;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="msbutton" onclick="playAudio()">Play Music</button>
+    <audio id="bg-music" loop>
+      <source src="https://cdn.glitch.me/0130197a-5f42-4704-90ae-b924ebe5bcb4/soundtrack.mp3?v=1745619764739" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+    <h1 class="header">The</h1>
+    <h2 class="header2">Distance</h2>
+    <h3 class="header3">of</h3>
+    <h4 class="header4">Missing</h4>
+    <p class="selection1">wait until the animation over......</p>
+    <p class="selection2">and select a departure country!!</p>
+    <p class="copyright">©&nbsp;2025&nbsp;&nbsp;Yicing Huang</p>
+    <p class="soundtrack">
+      Soundtrack in Use: Brian Eno - Ambient 1: Music for Airports 1/1
+    </p>
+    <div>
+      <select id="countrySelect">
+        <option value="">Country</option>
+      </select>
+    </div>
+
+    <script>
+      function playAudio() {
+        var audio = document.getElementById('bg-music');
+        audio.play();
+      }
+      Promise.all([d3.json("routes.json"), d3.json("airport.json")]).then(
+        ([routesData, airportData]) => {
+          console.log("Routes Data:", routesData);
+          console.log("Airport Data:", airportData);
+
+          // get IAATA codes
+          const airports = Array.from(new Set(airportData.map((d) => d.IATA)));
+          console.log("All airports:", airports);
+
+          // get airport IATA
+          var airportIATA = {};
+          airportData.forEach((airport) => {
+            airportIATA[airport.IATA] = airport;
+          });
+
+          // get airport info by ID
+          var airportInfoById = {};
+          fetch("airport.json")
+            .then((response) => response.json())
+            .then((data) => {
+              data.forEach((d) => {
+                airportInfoById[d["Airport ID"]] = d;
+              });
+            });
+
+          // get countries
+          const countries = Array.from(
+            new Set(airportData.map((d) => d.Country))
+          );
+          const countryToAirports = {};
+
+          // group airports by country
+          airportData.forEach((airport) => {
+            if (!countryToAirports[airport.Country]) {
+              countryToAirports[airport.Country] = [];
+            }
+            countryToAirports[airport.Country].push(airport);
+          });
+
+          // canvas
+          var windowWidth = window.innerWidth;
+          var windowHeight = window.innerHeight;
+
+          var svgCanvas = d3
+            .select("body")
+            .append("svg")
+            .attr("width", windowWidth)
+            .attr("height", windowHeight);
+
+          // array by longtitude
+          var minLongitude = d3.min(airportData, (d) =>
+            parseFloat(d.Longitude)
+          );
+          var maxLongitude = d3.max(airportData, (d) =>
+            parseFloat(d.Longitude)
+          );
+
+          // scale for the array
+          var longitudeScale = d3
+            .scaleLinear()
+            .domain([minLongitude, maxLongitude])
+            .range([0.2 * windowWidth, 0.8 * windowWidth]);
+
+          // create a group for airportArray and routeCircles
+          var zoomGroup = svgCanvas.append("g").attr("class", "zoom-group");
+
+          // horizontal line (x-axis / airports dots)
+          var airportArray = svgCanvas
+            .selectAll("circle")
+            .data(airports)
+            .join("circle")
+            .attr("cx", (d) => longitudeScale(airportIATA[d].Longitude))
+            .attr("cy", windowHeight / 2)
+            .attr("r", "0.2px")
+            .attr("fill", "white");
+
+          // draw routes
+          var routeCircles = [];
+          var currentIndex = 0;
+          var batchSize = 600;
+
+          function drawRoutes(routes) {
+            routeCircles = svgCanvas
+              .append("g")
+              .selectAll("path")
+              .data(routes.slice(currentIndex, currentIndex + batchSize))
+              .enter()
+              .append("path")
+              .attr("class", "route")
+              .attr("d", function (d) {
+                var source = airportIATA[d["Source airport"]];
+                var destination = airportIATA[d["Destination airport"]];
+                if (source && destination) {
+                  var x1 = longitudeScale(parseFloat(source.Longitude));
+                  var x2 = longitudeScale(parseFloat(destination.Longitude));
+                  var y1 = windowHeight / 2;
+                  var y2 = windowHeight / 2;
+                  var dx = x2 - x1;
+                  var dy = y2 - y1;
+                  var dr = Math.sqrt(dx * dx + dy * dy) * 0.1;
+
+                  return (
+                    "M" +
+                    x1 +
+                    "," +
+                    y1 +
+                    " A" +
+                    dr +
+                    "," +
+                    dr +
+                    " 0 0,1 " +
+                    x2 +
+                    "," +
+                    y2
+                  );
+                }
+                return null;
+              })
+              .attr("stroke", "white")
+              .attr("stroke-width", 0.02)
+              .attr("fill", "none")
+              .filter(function () {
+                return this.getAttribute("d") !== null;
+              });
+
+            // animation setting
+            routeCircles.each(function () {
+              var path = d3.select(this);
+              try {
+                var length = this.getTotalLength();
+                path
+                  .attr("stroke-dasharray", length + " " + length)
+                  .attr("stroke-dashoffset", length)
+                  .transition()
+                  .duration(1000)
+                  .ease(d3.easeLinear)
+                  .attr("stroke-dashoffset", 0);
+              } catch (e) {
+                console.error("Error getting path length:", e);
+              }
+            });
+
+            // mouseover for route info
+            routeCircles.on("mouseover", function (e, d) {
+              var sourceId = d["Source airport ID"];
+              var destinationId = d["Destination airport ID"];
+              var sourceInfo = airportInfoById[sourceId] || {};
+              var destinationInfo = airportInfoById[destinationId] || {};
+
+              var sourceName = sourceInfo.Name || "Unknown";
+              var destinationName = destinationInfo.Name || "Unknown";
+              var sourceCountry = sourceInfo.Country || "Unknown";
+              var destinationCountry = destinationInfo.Country || "Unknown";
+
+              var distance = "Unknown";
+              if (
+                sourceInfo.Latitude &&
+                sourceInfo.Longitude &&
+                destinationInfo.Latitude &&
+                destinationInfo.Longitude
+              ) {
+                distance = calculateDistance(
+                  parseFloat(sourceInfo.Latitude),
+                  parseFloat(sourceInfo.Longitude),
+                  parseFloat(destinationInfo.Latitude),
+                  parseFloat(destinationInfo.Longitude)
+                ).toFixed(3);
+              }
+
+              var descripText = svgCanvas
+                .append("text")
+                .attr("class", "descrip-text")
+                .attr("fill", "white")
+                .attr("font-size", 13)
+                .attr("font-family", "helvetica");
+
+              descripText
+                .append("tspan")
+                .text("Departure: " + sourceCountry + " (" + sourceName + ")")
+                .attr("x", 20)
+                .attr("y", 45);
+              descripText
+                .append("tspan")
+                .text(
+                  "Destination: " +
+                    destinationCountry +
+                    " (" +
+                    destinationName +
+                    ")"
+                )
+                .attr("x", 20)
+                .attr("y", 58);
+              descripText
+                .append("tspan")
+                .text("Distance: " + distance + " km")
+                .attr("x", 20)
+                .attr("y", 73);
+            });
+
+            // mouseout
+            routeCircles.on("mouseout", function () {
+              svgCanvas.selectAll(".descrip-text").remove();
+            });
+
+            // update currentIndex by batchSize
+            currentIndex += batchSize;
+            if (currentIndex < routes.length) {
+              setTimeout(function () {
+                drawRoutes(routes);
+              }, 3);
+            }
+          }
+
+          // select country
+          var countrySelect = d3
+            .select("#countrySelect")
+            .attr("disabled", true);
+          var instruction = svgCanvas
+            .append("text")
+            .attr("class", "instruction-text")
+            .attr("x", 15)
+            .attr("y", 830)
+            .text("wait until animation over...");
+
+          instruction
+            .transition()
+            .delay(15000)
+            .text("select a departure country!");
+
+          // update routes - after selecting a country
+          function updateRoutes(selectedCountry) {
+            svgCanvas.selectAll("g path.route").remove();
+            currentIndex = 0;
+
+            const selectedAirports = countryToAirports[selectedCountry];
+
+            const filteredRoutes = routesData.filter((route) => {
+              const source = airportData.find(
+                (a) => a.IATA === route["Source airport"]
+              );
+              const destination = airportData.find(
+                (a) => a.IATA === route["Destination airport"]
+              );
+
+              //select only source airports that are in the selected country
+              return (
+                source &&
+                destination &&
+                selectedAirports.some((a) => a.IATA === source.IATA) &&
+                source.Country === selectedCountry
+              );
+            });
+
+            console.log("Selected country:", selectedCountry);
+            console.log("Selected airports:", selectedAirports);
+            console.log("Filtered Routes:", filteredRoutes);
+
+            currentIndex = 0;
+
+            drawRoutes(filteredRoutes);
+
+            svgCanvas
+              .selectAll("g path.route")
+              .attr("stroke", "white")
+              .attr("stroke-width", 0.1);
+          }
+
+          // initialize routes
+          var selectedCountry;
+
+          function initializeRoutes() {
+            selectedCountry = countrySelect.property("value") || "";
+            if (selectedCountry === "") {
+              currentIndex = 0;
+              drawRoutes(routesData);
+            } else {
+              updateRoutes(selectedCountry);
+            }
+          }
+
+          // delay for country selection
+          setTimeout(() => {
+            countrySelect
+              .selectAll("option")
+              .data(countries.sort((a, b) => a.localeCompare(b)))
+              .enter()
+              .append("option")
+              .attr("value", (d) => d)
+              .text((d) => d);
+
+            countrySelect.attr("disabled", null);
+          }, 15000);
+
+          initializeRoutes();
+
+          //event listener for country selection
+          d3.select("#countrySelect").on("change", function (event) {
+            var selectedCountry = event.target.value;
+            console.log("changing", selectedCountry);
+            updateRoutes(selectedCountry);
+          });
+
+          // zoom function
+          // let zoom = d3.zoom()
+          //     .scaleExtent([1, 1.5])
+          //     .on("zoom", function(event) {
+          //         zoomGroup.attr("transform", event.transform);
+          //     });
+
+          // make sure the zoom function won't affect the brush
+          // svgCanvas.append("rect")
+          //     .attr("width", windowWidth - 200)
+          //     .attr("height", windowHeight - 200)
+          //     .style("fill", "none")
+          //     .style("pointer-events", "all")
+          //     .call(zoom);
+
+          // for brush
+          // calculate distance
+          function calculateDistance(lat1, lon1, lat2, lon2) {
+            var earthR = 6371;
+            // turn latitude and longitude into radians
+            var dLat = ((lat2 - lat1) * Math.PI) / 180;
+            var dLon = ((lon2 - lon1) * Math.PI) / 180;
+            // Haversine formula
+            var a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos((lat1 * Math.PI) / 180) *
+                Math.cos((lat2 * Math.PI) / 180) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return earthR * c;
+          }
+
+          var brushInfoText = svgCanvas
+            .append("text")
+            .attr("x", 20)
+            .attr("y", 60)
+            .style("fill", "white")
+            .style("font-size", "13px")
+            .style("font-family", "Arial, Helvetica, sans-serif")
+            .text("");
+
+          routesData.sort((a, b) => {
+            var sourceA = airportInfoById[a["Source airport ID"]];
+            var destinationA = airportInfoById[a["Destination airport ID"]];
+            var sourceB = airportInfoById[b["Source airport ID"]];
+            var destinationB = airportInfoById[b["Destination airport ID"]];
+
+            var distanceA =
+              sourceA && destinationA
+                ? calculateDistance(
+                    parseFloat(sourceA.Latitude),
+                    parseFloat(sourceA.Longitude),
+                    parseFloat(destinationA.Latitude),
+                    parseFloat(destinationA.Longitude)
+                  )
+                : 0;
+
+            var distanceB =
+              sourceB && destinationB
+                ? calculateDistance(
+                    parseFloat(sourceB.Latitude),
+                    parseFloat(sourceB.Longitude),
+                    parseFloat(destinationB.Latitude),
+                    parseFloat(destinationB.Longitude)
+                  )
+                : 0;
+
+            return distanceA - distanceB;
+          });
+
+          var minDistance = d3.min(routesData, (d) => {
+            var sourceInfo = airportInfoById[d["Source airport ID"]];
+            var destinationInfo = airportInfoById[d["Destination airport ID"]];
+            if (sourceInfo && destinationInfo) {
+              return calculateDistance(
+                parseFloat(sourceInfo.Latitude),
+                parseFloat(sourceInfo.Longitude),
+                parseFloat(destinationInfo.Latitude),
+                parseFloat(destinationInfo.Longitude)
+              );
+            }
+            return 0;
+          });
+
+          var maxDistance = d3.max(routesData, (d) => {
+            var sourceInfo = airportInfoById[d["Source airport ID"]];
+            var destinationInfo = airportInfoById[d["Destination airport ID"]];
+            if (sourceInfo && destinationInfo) {
+              return calculateDistance(
+                parseFloat(sourceInfo.Latitude),
+                parseFloat(sourceInfo.Longitude),
+                parseFloat(destinationInfo.Latitude),
+                parseFloat(destinationInfo.Longitude)
+              );
+            }
+            return 0;
+          });
+
+          // line for selecting distance range
+          svgCanvas
+            .append("line")
+            .attr("x1", 0.9 * windowWidth)
+            .attr("y1", 50)
+            .attr("x2", 0.9 * windowWidth)
+            .attr("y2", windowHeight - 50)
+            .attr("stroke", "white")
+            .attr("stroke-width", 2);
+
+          // text for distance range
+          var hint = svgCanvas
+            .append("text")
+            .style("fill", "white")
+            .style("font-size", "12px")
+            .style("font-family", "Arial, Helvetica, sans-serif");
+
+          hint
+            .append("tspan")
+            .text("Select")
+            .attr("x", 0.85 * windowWidth)
+            .attr("y", 0.48 * windowHeight);
+
+          hint
+            .append("tspan")
+            .text("Distance")
+            .attr("x", 0.85 * windowWidth)
+            .attr("y", 0.5 * windowHeight);
+
+          hint
+            .append("tspan")
+            .text("Range")
+            .attr("x", 0.85 * windowWidth)
+            .attr("y", 0.52 * windowHeight);
+
+          hint
+            .append("tspan")
+            .text("here!")
+            .attr("x", 0.85 * windowWidth)
+            .attr("y", 0.54 * windowHeight);
+
+          svgCanvas
+            .append("text")
+            .attr("x", 0.893 * windowWidth)
+            .attr("y", 0.03 * windowHeight)
+            .style("fill", "white")
+            .style("font-size", "13px")
+            .style("font-family", "Arial, Helvetica, sans-serif")
+            .text("min");
+
+          svgCanvas
+            .append("text")
+            .attr("x", 0.893 * windowWidth)
+            .attr("y", 0.98 * windowHeight)
+            .style("fill", "white")
+            .style("font-size", "13px")
+            .style("font-family", "Arial, Helvetica, sans-serif")
+            .text("max");
+
+          var brush = d3
+            .brushY()
+            .extent([
+              [0.95 * windowWidth - 150, 50],
+              [0.96 * windowWidth, windowHeight - 50],
+            ])
+            .on("brush", brushed);
+
+          svgCanvas
+            .append("g")
+            .attr("class", "brush")
+            .call(brush)
+            .attr("transform", "translate(0,0)");
+
+          var distanceScale = d3
+            .scaleLinear()
+            .domain([minDistance, maxDistance])
+            .range([50, windowHeight - 50]);
+
+          function brushed(event) {
+            var selection = event.selection;
+            if (!selection) {
+              d3.selectAll(".route").attr("stroke", "white");
+              return;
+            }
+
+            var minY = selection[0];
+            var maxY = selection[1];
+
+            var minDistanceSelected = distanceScale.invert(minY);
+            var maxDistanceSelected = distanceScale.invert(maxY);
+
+            var minDistance = Infinity;
+            var maxDistance = -Infinity;
+
+            var selectedRoutes = [];
+
+            d3.selectAll(".route").each(function (d) {
+              var sourceInfo = airportInfoById[d["Source airport ID"]];
+              var destinationInfo =
+                airportInfoById[d["Destination airport ID"]];
+              if (!sourceInfo || !destinationInfo) return;
+
+              var distance = calculateDistance(
+                parseFloat(sourceInfo.Latitude),
+                parseFloat(sourceInfo.Longitude),
+                parseFloat(destinationInfo.Latitude),
+                parseFloat(destinationInfo.Longitude)
+              );
+
+              minDistance = Math.min(minDistance, distance);
+              maxDistance = Math.max(maxDistance, distance);
+
+              if (
+                distance >= minDistanceSelected &&
+                distance <= maxDistanceSelected
+              ) {
+                selectedRoutes.push(this);
+              }
+            });
+
+            distanceScale.domain([minDistance, maxDistance]);
+
+            d3.selectAll(".route").each(function (d) {
+              var sourceInfo = airportInfoById[d["Source airport ID"]];
+              var destinationInfo =
+                airportInfoById[d["Destination airport ID"]];
+              if (!sourceInfo || !destinationInfo) return;
+
+              var distance = calculateDistance(
+                parseFloat(sourceInfo.Latitude),
+                parseFloat(sourceInfo.Longitude),
+                parseFloat(destinationInfo.Latitude),
+                parseFloat(destinationInfo.Longitude)
+              );
+
+              if (
+                distance >= minDistanceSelected &&
+                distance <= maxDistanceSelected
+              ) {
+                d3.select(this).attr("stroke", "lightblue");
+              } else {
+                d3.select(this).attr("stroke", "white");
+              }
+            });
+
+            brushInfoText
+              .text(
+                "Distance Range: " +
+                  minDistanceSelected.toFixed(2) +
+                  " km - " +
+                  maxDistanceSelected.toFixed(2) +
+                  " km / " +
+                  "Selected Routes: " +
+                  selectedRoutes.length
+              )
+              .attr("x", 20)
+              .attr("y", 25);
+          }
+        }
+      );
+    </script>
+  </body>
+</html>
